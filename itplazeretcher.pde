@@ -1,24 +1,46 @@
-#define X_DIR_PIN 14   //A0
-#define X_STEP_PIN 8
+/* Arduino laser cutter and controller
+ * v0.1 by EDR - June 10, 2009 initial software (er0sentha1@gmail.com)
+ * v0.2 by EDR - June 14, 2009 added menus
+ * v0.3 by EDR - June 18, 2009 added calibration routines each step = .0002777"  1 inch = 3600 steps
+ * Eric Rosenthal
+ * 191 Beacon Hill Rd
+ * Morganville, NJ 07751
+ * 732-817-1720
+ * www.creative-technology.net
+ * Copyright 2009-2011 ALL RIGHTS RESERVED 
+ * Arduino DV with ATmega 328
+ *
+ * v0.4 by Zach Taylor - July 18, 2009 (ztaylor4@gmail.com)
+ *
+ * also using code from:
+ * Arduino G-code Interpreter
+ * v1.0 by Mike Ellery - initial software (mellery@gmail.com)
+ * v1.1 by Zach Hoeken - cleaned up and did lots of tweaks (hoeken@gmail.com)
+ * v1.2 by Chris Meighan - cleanup / G2&G3 support (cmeighan@gmail.com)
+ * v1.3 by Zach Hoeken - added thermocouple support and multi-sample temp readings. (hoeken@gmail.com)
+ * v1.3x by Zach Taylor - update for Arduino 16 and Diecimila compatability (ztaylor4@gmail.com)
+ * v1.4 by Eric Rosenthal -July 15, 2011 -  revision for laser cutter using hackvision board
+ * v1.5 by Zevensuy Rodriguez - August 01,2011 - re-revision for laser cutter 
+ 
+ */
 
-#define Y_DIR_PIN 15    //A1
-#define Y_STEP_PIN 17   //A3
+#include "config.h"
+#include <SoftwareSerial.h>
 
-#define Z_DIR_PIN 12
-#define Z_STEP_PIN 13
+SoftwareSerial mySerial = SoftwareSerial(rxPin, txPin);
+boolean mainMenuState = false;
 
-#define UP 0
-#define DOWN 1
-#define LEFT 2
-#define RIGHT 3
-#define IN 4
-#define OUT 5
+//#define upButton 5
+#define downButton 4
+#define leftButton 3
+#define rightButton 2
+#define okButton 10
 
-int stepSpeed = 1000;
-
-
+int upButtonSwitch = 0;
+int upButton = 10;
 void setup(){
 
+  //Pins for motor control
   pinMode(X_DIR_PIN, OUTPUT);
   pinMode(X_STEP_PIN, OUTPUT);
   pinMode(Y_DIR_PIN, OUTPUT);
@@ -26,66 +48,87 @@ void setup(){
   pinMode(Z_DIR_PIN, OUTPUT);
   pinMode(Z_STEP_PIN, OUTPUT);
 
+  pinMode (txPin, OUTPUT); // Software Serial to control input to the screen
 
+
+  //Pins for button control
+  pinMode(upButton, INPUT);
+  pinMode(downButton, INPUT);
+  pinMode(leftButton, INPUT);
+  pinMode(rightButton, INPUT);
+  pinMode(okButton, INPUT);
+  
+  //With the hackvision board you have to set pins to High and read for when the buttons go to ground
+  digitalWrite(upButton, HIGH);
+  digitalWrite(downButton, HIGH);
+  digitalWrite(leftButton, HIGH);
+  digitalWrite(rightButton, HIGH);
+  digitalWrite(okButton, HIGH);
+
+
+  mySerial.begin(9600);          // 9600 baud is LCD comm speed
+  Serial.begin(9600);            // 9600 baud is USB comm speed	
+
+  displayBootup();
 
 }
 
 
 void loop(){
 
-motorStep(3,4000);
-delay(100);
+  //mainMenu(mainMenuState);
+  
+  if(digitalRead(upButton) == LOW){
+    Serial.println("hello");
+  }
+  
+  //Serial.println(readButton());
+  //motorStep(0,1000);
+  //motorStep(1,1000);
+  //motorStep(2,1000);
+  //motorStep(3,1000);
+  //motorStep(4,1000);
+  //motorStep(5,1000);
+
+}
+
+void displayBootup() {
+
+  mySerial.print("?S0");
+  delay(1500);
+  LCD_clear();                       // clear the LCD
+  LCD_line(0, " Arduino Controlled");      // displays on the LCD
+  LCD_line(1, "   Laser Cutter    ");      // displays on the LCD
+  LCD_line(2, "                   ");          // displays on the LCD
+  LCD_line(3, "      Rev 0.5      ");          // displays on the LCD
+  delay(3000);		                      // pause a few secs
+  LCD_clear();
+  mainMenuState = true;
+}
+
+void mainMenu(boolean _mainMenuState){
+
+  if(_mainMenuState){
+    LCD_line(0, "      Main menu     ");      // displays on the LCD
+    LCD_line(1, "____________________");      // displays on the LCD
+    LCD_line(2, "____________________");          // displays on the LCD
+    LCD_line(3, "____________________");          // displays on the LCD
+  }
+
+}
+
+long readButton() {
+  long buttonsPressed = 0;
+  if (digitalRead(upButton)== 1){
+    //buttonTimer = millis();
+    buttonsPressed = upButton;
+  }
+  
+  return buttonsPressed;
 }
 
 
-void motorStep (int motorDirection, int numberSteps) {
-  int dirPin;
-  int stepPin;
-  int moveDirection;
 
-  switch (motorDirection) {
-  case UP:
-    dirPin = Z_DIR_PIN;
-    stepPin = Z_STEP_PIN;
-    moveDirection = HIGH;
-    break;
-  case DOWN:
-    dirPin = Z_DIR_PIN;
-    stepPin = Z_STEP_PIN;
-    moveDirection = LOW;
-    break;
-  case LEFT:
-    dirPin = X_DIR_PIN;
-    stepPin = X_STEP_PIN;
-    moveDirection = LOW;
-    break;
-  case RIGHT:
-    dirPin = X_DIR_PIN;
-    stepPin = X_STEP_PIN;
-    moveDirection = HIGH;
-    break;
-  case OUT:
-    dirPin = Y_DIR_PIN;
-    stepPin = Y_STEP_PIN;
-    moveDirection = LOW;
-    break;
-  case IN:
-    dirPin = Y_DIR_PIN;
-    stepPin = Y_STEP_PIN;
-    moveDirection = HIGH;
-    break;
-  default:
-    return;
-  }
-
-  digitalWrite(dirPin, moveDirection);
-  delay(100);
-  for (int i = 0; i < numberSteps; i++) {
-    digitalWrite(stepPin, HIGH);
-    digitalWrite(stepPin, LOW);
-    delayMicroseconds(stepSpeed);      // This delay time is close to top speed for this
-  }
-}
 
 
 
