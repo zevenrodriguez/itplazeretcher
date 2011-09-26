@@ -7,12 +7,13 @@
 #define Z_DIR_PIN 12
 #define Z_STEP_PIN 13
 
-#define UP 0
-#define DOWN 1
-#define LEFT 2
-#define RIGHT 3
-#define IN 4
-#define OUT 5
+#define IDLE 0
+#define UP 1
+#define DOWN 2
+#define LEFT 3
+#define RIGHT 4
+#define IN 5
+#define OUT 6
 
 //LCD pins
 #define rxPin 16                 // not used but must be defined
