@@ -38,20 +38,31 @@ boolean mainMenuState = false;
 
 int upButtonSwitch = 0;
 long buttonTimer = 0;
-int pressInterval = 250;
+int pressInterval = 100;
 
 long curButton = 0;
+
+
+
+#define COMMAND_SIZE 128
+char gWord[COMMAND_SIZE];
+byte serial_count;
+int no_data = 0;
+long idle_time;
+boolean comment = false;
+boolean bytes_received = false;
+
 
 void setup(){
 
   //Pins for motor control
-  pinMode(X_DIR_PIN, OUTPUT);
-  pinMode(X_STEP_PIN, OUTPUT);
-  pinMode(Y_DIR_PIN, OUTPUT);
-  pinMode(Y_STEP_PIN, OUTPUT);
-  pinMode(Z_DIR_PIN, OUTPUT);
-  pinMode(Z_STEP_PIN, OUTPUT);
-
+  // pinMode(X_DIR_PIN, OUTPUT);
+  // pinMode(X_STEP_PIN, OUTPUT);
+  // pinMode(Y_DIR_PIN, OUTPUT);
+  // pinMode(Y_STEP_PIN, OUTPUT);
+  // pinMode(Z_DIR_PIN, OUTPUT);
+  // pinMode(Z_STEP_PIN, OUTPUT);
+  init_steppers(); // Starts up the steppers in stepper control file
   pinMode (txPin, OUTPUT); // Software Serial to control input to the screen
 
 
@@ -80,19 +91,19 @@ void setup(){
 
 void loop(){
 
-   curButton = readButton();
-   if (curButton > 0) {
-Serial.println(curButton);
-motorStep(curButton,1000);
-   }
-//   motorStep(curButton,1000); //up
+  curButton = readButton();
+  if (curButton > 0) {
+    Serial.println(curButton);
+    motorStep(curButton,100);
+  }
+  //   motorStep(curButton,1000); //up
   //Serial.println(readButton());
- // motorStep(0,1000); //up  
- // motorStep(1,1000); //down
- // motorStep(2,1000); //right
- // motorStep(3,1000); //left
-//  motorStep(4,1000); //in
-//  motorStep(5,1000); // out
+  // motorStep(0,1000); //up  
+  // motorStep(1,1000); //down
+  // motorStep(2,1000); //right
+  // motorStep(3,1000); //left
+  //  motorStep(4,1000); //in
+  //  motorStep(5,1000); // out
 
 }
 
@@ -152,11 +163,66 @@ long readButton() {
     }
 
   }
-  
-      return buttonPressed;
+
+  return buttonPressed;
 }
 
 
+
+int lineSpace = 0;
+void listen() {
+  char c;
+
+  //read in characters if we got them.
+  if (Serial.available() > 0)
+  {
+    c = Serial.read();
+    no_data = 0;
+    if (lineSpace == 0) {
+      LCD_clearLine(3);
+    }
+    LCD_charPos(c, lineSpace, 3);
+    lineSpace = (lineSpace+1)%20;
+    //newlines are ends of commands.
+    if (c != '\n')
+    {
+      // Start of comment - ignore any bytes received from now on
+      if (c == '(')
+        comment = true;
+
+      // If we're not in comment mode, add it to our array.
+      if (!comment)
+      {
+        gWord[serial_count] = c;
+        serial_count++;
+      }
+      if (c == ')')
+        comment = false; // End of comment - start listening again
+    }
+
+    bytes_received = true;
+  }
+  //mark no data if nothing heard for 100 milliseconds
+  else
+  {
+    if ((millis() - idle_time) >= 100)
+    {
+      no_data++;
+      idle_time = millis();
+    }
+  }
+
+  //if theres a pause or we got a real command, do it
+  if (bytes_received && (c == '\n' || no_data ))
+  {
+    //process our command!
+    process_string(gWord, serial_count);
+
+    //clear command.
+    init_process_string();
+  }
+
+}
 
 
 
